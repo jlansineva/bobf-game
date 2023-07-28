@@ -1,5 +1,6 @@
 (ns clojure-bot.visualizer
-  (:require [pelinrakentaja-engine.core :as pr]
+  (:require [clojure.string :as str]
+            [pelinrakentaja-engine.core :as pr]
             [pelinrakentaja-engine.utils.log :as log]))
 
 (defonce engine nil)
@@ -97,34 +98,173 @@
  :round 169915,
    :shootingLines []})
 
+(comment {:players
+ [{:money 3638,
+   :name "aleksi",
+   :usableItems [],
+   :state "MOVE",
+   :timeInState 0,
+   :score 4254,
+   :health 70,
+   :position {:x 47, :y 10},
+   :actionCount 94}
+  {:money 5000,
+   :name "shodan-157",
+   :usableItems [],
+   :state "MOVE",
+   :timeInState 0,
+   :score 0,
+   :health 80,
+   :position {:x 71, :y 13},
+   :actionCount 30}],
+ :finishedPlayers
+ [{:money 1451,
+   :name "shodan-2179",
+   :usableItems [],
+   :state "MOVE",
+   :timeInState 0,
+   :score 4608,
+   :health 60,
+   :position {:x 9, :y 4},
+   :actionCount 41}
+  {:money 4631,
+   :name "shodan-204",
+   :usableItems [],
+   :state "MOVE",
+   :timeInState 0,
+   :score 485,
+   :health 60,
+   :position {:x 9, :y 4},
+   :actionCount 47}
+  {:money 5000,
+   :name "shodan-183",
+   :usableItems [],
+   :state "MOVE",
+   :timeInState 0,
+   :score 0,
+   :health 60,
+   :position {:x 9, :y 4},
+   :actionCount 28}
+  {:money 3650,
+   :name "shodan-255",
+   :usableItems
+   [{:price 110,
+     :discountPercent 71,
+     :position {:x 47, :y 20},
+     :type "WEAPON",
+     :isUsable true}],
+   :state "MOVE",
+   :timeInState 0,
+   :score 2550,
+   :health 60,
+   :position {:x 9, :y 4},
+   :actionCount 131}
+  {:money 3755,
+   :name "shodan-203",
+   :usableItems [],
+   :state "MOVE",
+   :timeInState 0,
+   :score 1682,
+   :health 40,
+   :position {:x 9, :y 4},
+   :actionCount 103}
+  {:money 3660,
+   :name "shodan-210",
+   :usableItems [],
+   :state "MOVE",
+   :timeInState 0,
+   :score 2271,
+   :health 60,
+   :position {:x 9, :y 4},
+   :actionCount 139}
+  {:money 2007,
+   :name "shodan-157",
+   :usableItems
+   [{:price 4759,
+     :discountPercent 77,
+     :position {:x 29, :y 21},
+     :type "WEAPON",
+     :isUsable true}],
+   :state "MOVE",
+   :timeInState 0,
+   :score 9386,
+   :health 60,
+   :position {:x 9, :y 4},
+   :actionCount 246}],
+ :items
+ [{:price 0,
+   :discountPercent 0,
+   :position {:x 87, :y 24},
+   :type "POTION",
+   :isUsable false}
+  {:price 0,
+   :discountPercent 0,
+   :position {:x 37, :y 14},
+   :type "POTION",
+   :isUsable false}
+  {:price 0,
+   :discountPercent 0,
+   :position {:x 9, :y 2},
+   :type "POTION",
+   :isUsable false}
+  {:price 1922,
+   :discountPercent 25,
+   :position {:x 79, :y 13},
+   :type "JUST_SOME_JUNK",
+   :isUsable false}
+  {:price 0,
+   :discountPercent 0,
+   :position {:x 82, :y 5},
+   :type "POTION",
+   :isUsable false}],
+ :round 235646,
+ :shootingLines []})
+
 (defn id-for-item
   [item]
   (let [item-id (keyword (str (-> item :position :x) "-" (-> item :position :y) "-" (:type item)))]
-    (log/log :debug :id-for-item item item-id)
+    #_(log/log :debug :id-for-item item item-id)
     item-id))
+
+(defn diff-ids
+  [state old-state id-fn]
+  (let [old-ids (into #{} (map id-fn) old-state)
+        new-ids (into #{} (map id-fn) state)
+        to-remove (into [] (filter #(not (% new-ids)) old-ids))
+        to-add (into [] (filter #(not (% old-ids)) new-ids))]
+    (log/log :debug :update-items old-ids :-> new-ids :remove> to-remove :add> to-add)
+    {:to-add to-add :to-remove to-remove}))
+
+(defn collect-diffs
+  [collected to-add to-remove items id-fn]
+  (-> collected
+        (update :to-remove #(vec (concat % to-remove)))
+        (update :to-add (fn [add]
+                          (vec (concat
+                                add
+                                (filter (fn [item]
+                                          (some #(when (= %
+                                                          (id-fn item))
+                                                   true)
+                                                to-add))
+                                        items)))))))
 
 (defn update-items
   [collected items old-items]
-  (let [old-ids (into #{} (map id-for-item) old-items)
-        new-ids (into #{} (map id-for-item) items)
-        to-remove (into [] (filter #(not (% new-ids)) old-ids))
-        to-add (into [] (filter #(not (% old-ids)) new-ids))]
+  (let [{:keys [to-add to-remove]} (diff-ids items old-items id-for-item)]
     (log/log :debug :update-items collected)
-    (log/log :debug :update-items old-ids :-> new-ids :remove> to-remove :add> to-add)
-    (-> collected
-        (update :remove #(vec (concat % to-remove)))
-        (update :add (fn [add]
-                       (vec (concat
-                             add
-                             (filter (fn [item]
-                                       (some #(when (= (:id %)
-                                                       (id-for-item item))
-                                                true)
-                                             to-add))
-                                     items)))))))) ;; TODO simplify
+    (collect-diffs collected to-add to-remove items id-for-item))) ;; TODO simplify
+
+(defn player-id
+  [player]
+  (keyword (str/replace (:name player) #" " "-")))
 
 (defn update-players
-  [])
+  [collected players old-players local-player]
+  (let [players (filter #(not (= (:name %) (:name local-player))) players)
+        old-players (filter #(not (= (:name %) (:name local-player))) old-players)
+        {:keys [to-add to-remove]} (diff-ids players old-players player-id)]
+    (collect-diffs collected to-add to-remove players player-id)))
 
 (defn get-item-type
   [item-type]
@@ -135,23 +275,49 @@
 
 (defn create-entities
   [new-entities]
-  (map #(-> {}
-            (merge (:position %))
-            (assoc :texture {:width 1 :height 1}
-                   :rotation 0
-                   :scale {:x 1 :y 1})
-            (assoc :id (id-for-item %)
-                   :type (get-item-type (:type %)))) new-entities))
+  (log/log :debug :create-entities new-entities)
+  (let [to-add (map #(let [player? (some? (:name %))
+              id (if player?
+                   (player-id %)
+                   (id-for-item %))
+              type (if player?
+                     :enemy
+                     (get-item-type (:type %)))]
+          (-> {}
+              (merge (:position %))
+              (assoc :texture {:width 1 :height 1}
+                     :rotation 0
+                     :scale {:x 1 :y 1})
+              (assoc :id id
+                     :type type)))
+                    new-entities)]
+    to-add))
+
+(defn create-player-update-events
+  [state players]
+  (let [local-player (get-in state [:player :local :name])]
+    (mapv
+     #(if (= local-player (:name %))
+        [:player (get-in state [:player :local :position]) [:x :y]]
+        [(player-id %) (:position %) [:x :y]])
+     players)))
 
 (defn update-visualizer
   [state old-state]
-  (let [{:keys [add remove]} (-> {}
-                                 (update-items (:items state) (:items old-state)))]
-    (when (seq add) (pr/dispatch (into [:entities/add-entities] (create-entities add))))
-    #_(when (seq remove)
-      (pr/dispatch (into [:entities/remove-entities-with-id] remove)))
-    (pr/dispatch [:entities/update-entities-id-properties
-                  [:player (get-in state [:player :local :position]) [:x :y]]])
+  (let [{:keys [to-add to-remove]}
+        (-> {}
+            (update-items (:items state) (:items old-state))
+            (update-players (:players state) (:players old-state) (get-in state [:player :local])))]
+    (pr/update!)
+    (log/log :debug :update-items :remove> to-remove :add> to-add)
+    (when (seq to-add)
+      (pr/dispatch (into [:entities/add-entities] (create-entities to-add))))
+    (when (seq to-remove)
+      (pr/dispatch (into [:entities/remove-entities-with-ids] to-remove)))
+    (let [updateable-players (create-player-update-events state (:players state))]
+      (pr/dispatch (into [:entities/update-entities-id-properties
+                          [:player (get-in state [:player :local :position]) [:x :y]]]
+                         updateable-players)))
     state))
 
 (defn load-resources

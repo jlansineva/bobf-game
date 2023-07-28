@@ -99,8 +99,8 @@
       state)))
 
 (defn algo
-  []
-  (let [bot-name (str (gensym "shodan-")) ;; generate unique bot name
+  [{:keys [bot-name bot-mode] :as _options}]
+  (let [bot-name (or bot-name (str (gensym "shodan-"))) ;; generate unique bot name
         current-map (load-level (api/game-map))
         initial-server-state (api/register bot-name)
         logic-fsm (behavior/process-fsm behavior/bot-logic-state)
@@ -109,10 +109,10 @@
                     logic-fsm
                     current-map
                     initial-server-state)]
-    (vis/load-resources current-map (api/game-state))
+    (when-not bot-mode
+      (vis/load-resources current-map (api/game-state)))
     (loop [state game-state
            old-state {}]
-      (pr/update!)
       (let [{:keys [player]} state
             {{:keys [alive?]} :local} player
             current-server-state (api/game-state)
@@ -120,8 +120,10 @@
                           (update-game-state-with-latest-server-state current-server-state)
                           (behavior/decide-next-move)
                           (behavior/apply-behavior)
-                          (dispatch-move)
-                          (vis/update-visualizer old-state))]
+                          (dispatch-move))
+            new-state (if bot-mode
+                        new-state
+                        (vis/update-visualizer new-state old-state))]
         (if-not alive?
           {}
           (recur new-state state))))))
@@ -130,7 +132,21 @@
 
 (defn -main
   [& args]
+  (prn args)
+  (let [options (reduce (fn [acc curr]
+                          (cond
+                            (= curr "-botmode") (assoc acc :bot-mode true)
+                            (= curr "-name") (assoc acc :bot-name nil :set :bot-name)
+                            (some? (:set acc)) (assoc acc (:set acc) curr :set nil)
+                            :else acc))
+                        {}
+                        args)
+        options (dissoc options :set)]
+    (prn options)
   ;; game-info contains the game map
-  (pr/game-loop
-    (algo))
-  (vis/load-engine))
+
+    (if (:bot-mode options)
+      (algo options)
+      (pr/game-loop
+       (algo options)))
+    (when-not (:bot-mode options) (vis/load-engine))))
