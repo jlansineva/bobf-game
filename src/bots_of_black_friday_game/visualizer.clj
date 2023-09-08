@@ -11,214 +11,6 @@
 
 (defn between [lower compare upper]
   (and (> compare lower) (< compare upper)))
-(comment
-  {:players [],
- :finishedPlayers
- [{:money 1451,
-   :name "shodan-2179",
-   :usableItems [],
-   :state "MOVE",
-   :timeInState 0,
-   :score 4608,
-   :health 60,
-   :position {:x 9, :y 4},
-   :actionCount 41}
-  {:money 4631,
-   :name "shodan-204",
-   :usableItems [],
-   :state "MOVE",
-   :timeInState 0,
-   :score 485,
-   :health 60,
-   :position {:x 9, :y 4},
-   :actionCount 47}
-  {:money 5000,
-   :name "shodan-183",
-   :usableItems [],
-   :state "MOVE",
-   :timeInState 0,
-   :score 0,
-   :health 60,
-   :position {:x 9, :y 4},
-   :actionCount 28}
-  {:money 3650,
-   :name "shodan-255",
-   :usableItems
-   [{:price 110,
-     :discountPercent 71,
-     :position {:x 47, :y 20},
-     :type "WEAPON",
-     :isUsable true}],
-   :state "MOVE",
-   :timeInState 0,
-   :score 2550,
-   :health 60,
-   :position {:x 9, :y 4},
-   :actionCount 131}
-  {:money 2007,
-   :name "shodan-157",
-   :usableItems
-   [{:price 4759,
-     :discountPercent 77,
-     :position {:x 29, :y 21},
-     :type "WEAPON",
-     :isUsable true}],
-   :state "MOVE",
-   :timeInState 0,
-   :score 9386,
-   :health 60,
-   :position {:x 9, :y 4},
-   :actionCount 246}],
- :items
- [{:price 0,
-   :discountPercent 0,
-   :position {:x 88, :y 9},
-   :type "POTION",
-   :isUsable false}
-  {:price 0,
-   :discountPercent 0,
-   :position {:x 9, :y 2},
-   :type "POTION",
-   :isUsable false}
-  {:price 1682,
-   :discountPercent 26,
-   :position {:x 6, :y 12},
-   :type "JUST_SOME_JUNK",
-   :isUsable false}
-  {:price 1443,
-   :discountPercent 64,
-   :position {:x 62, :y 6},
-   :type "JUST_SOME_JUNK",
-   :isUsable false}
-  {:price 0,
-   :discountPercent 0,
-   :position {:x 79, :y 19},
-   :type "POTION",
-   :isUsable false}],
- :round 169915,
-   :shootingLines []})
-
-(comment {:players
- [{:money 3638,
-   :name "aleksi",
-   :usableItems [],
-   :state "MOVE",
-   :timeInState 0,
-   :score 4254,
-   :health 70,
-   :position {:x 47, :y 10},
-   :actionCount 94}
-  {:money 5000,
-   :name "shodan-157",
-   :usableItems [],
-   :state "MOVE",
-   :timeInState 0,
-   :score 0,
-   :health 80,
-   :position {:x 71, :y 13},
-   :actionCount 30}],
- :finishedPlayers
- [{:money 1451,
-   :name "shodan-2179",
-   :usableItems [],
-   :state "MOVE",
-   :timeInState 0,
-   :score 4608,
-   :health 60,
-   :position {:x 9, :y 4},
-   :actionCount 41}
-  {:money 4631,
-   :name "shodan-204",
-   :usableItems [],
-   :state "MOVE",
-   :timeInState 0,
-   :score 485,
-   :health 60,
-   :position {:x 9, :y 4},
-   :actionCount 47}
-  {:money 5000,
-   :name "shodan-183",
-   :usableItems [],
-   :state "MOVE",
-   :timeInState 0,
-   :score 0,
-   :health 60,
-   :position {:x 9, :y 4},
-   :actionCount 28}
-  {:money 3650,
-   :name "shodan-255",
-   :usableItems
-   [{:price 110,
-     :discountPercent 71,
-     :position {:x 47, :y 20},
-     :type "WEAPON",
-     :isUsable true}],
-   :state "MOVE",
-   :timeInState 0,
-   :score 2550,
-   :health 60,
-   :position {:x 9, :y 4},
-   :actionCount 131}
-  {:money 3755,
-   :name "shodan-203",
-   :usableItems [],
-   :state "MOVE",
-   :timeInState 0,
-   :score 1682,
-   :health 40,
-   :position {:x 9, :y 4},
-   :actionCount 103}
-  {:money 3660,
-   :name "shodan-210",
-   :usableItems [],
-   :state "MOVE",
-   :timeInState 0,
-   :score 2271,
-   :health 60,
-   :position {:x 9, :y 4},
-   :actionCount 139}
-  {:money 2007,
-   :name "shodan-157",
-   :usableItems
-   [{:price 4759,
-     :discountPercent 77,
-     :position {:x 29, :y 21},
-     :type "WEAPON",
-     :isUsable true}],
-   :state "MOVE",
-   :timeInState 0,
-   :score 9386,
-   :health 60,
-   :position {:x 9, :y 4},
-   :actionCount 246}],
- :items
- [{:price 0,
-   :discountPercent 0,
-   :position {:x 87, :y 24},
-   :type "POTION",
-   :isUsable false}
-  {:price 0,
-   :discountPercent 0,
-   :position {:x 37, :y 14},
-   :type "POTION",
-   :isUsable false}
-  {:price 0,
-   :discountPercent 0,
-   :position {:x 9, :y 2},
-   :type "POTION",
-   :isUsable false}
-  {:price 1922,
-   :discountPercent 25,
-   :position {:x 79, :y 13},
-   :type "JUST_SOME_JUNK",
-   :isUsable false}
-  {:price 0,
-   :discountPercent 0,
-   :position {:x 82, :y 5},
-   :type "POTION",
-   :isUsable false}],
- :round 235646,
- :shootingLines []})
 
 (defn id-for-item
   [item]
@@ -268,12 +60,18 @@
         {:keys [to-add to-remove]} (diff-ids players old-players player-id)]
     (collect-diffs collected to-add to-remove players player-id)))
 
-(defn get-item-type
-  [item-type]
-  (case item-type
-    "JUST_SOME_JUNK" :item
-    "POTION" :potion
-    "WEAPON" :weapon))
+(defn get-x-y-from-position
+  [entity]
+  (-> entity
+      (assoc :x (get-in entity [:position :x])
+             :y (get-in entity [:position :y]))
+      (dissoc :position)))
+
+(defn use-texture-key
+  [entity]
+  (-> entity
+      (assoc :type (:texture entity))
+      (dissoc :texture)))
 
 (defn create-entities
   "Create entities for the engine (logic entities are created elsewhere)"
@@ -283,11 +81,10 @@
                            renderable-entity
                            (cond-> base-entity
                              (some? (:position base-entity))
-                             (assoc :x (get-in base-entity [:position :x])
-                                    :y (get-in base-entity [:position :y]))
+                             get-x-y-from-position
 
-                             (some? (:position base-entity))
-                             (dissoc :position)
+                             (some? (:texture base-entity))
+                             use-texture-key
 
                              true (assoc :texture {:width 1 :height 1}
                                          :rotation 0
@@ -324,7 +121,7 @@
     state))
 
 (defn load-resources
-  [current-map game-state]
+  [current-map game-state] ;; TODO: maybe refactor type to something else -> resource id e.g.
   (pr/dispatch [:resources/load-texture {:type :wall :texture "bricks.png"}])
   (pr/dispatch [:resources/load-texture {:type :exit :texture "exit.png"}])
   (pr/dispatch [:resources/load-texture {:type :floor :texture "floor.png"}])
