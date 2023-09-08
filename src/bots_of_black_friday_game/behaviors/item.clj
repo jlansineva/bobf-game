@@ -1,21 +1,52 @@
-(ns bots-of-black-friday-game.behaviors.item)
+(ns bots-of-black-friday-game.behaviors.item
+  (:require [bots-of-black-friday-game.behavior :as behavior]))
 
-(def item-effects {::spawn-mammon (fn [self required state])})
+(defn queue-for-removal
+  [self required state]
+  (update-in state [:entities :removal-queue] (comp vec conj) (:id self)))
 
-(def item-evaluations {::enough-wealth-to-spawn-mammon? (fn [{:keys [self required] :as state}]
-                                                           (> (:wealth self) 10000))
-                        ::spawn-complete (fn [state])
-                        ::altar-broken (fn [state])})
+(def item-effects {::queue-for-removal queue-for-removal })
 
-(def item-fsm {:require [:clock :mammon]
-                :current {:state :idle
-                          :effect :no-op}
-                :last {:state nil}
-                :states {:idle {:effect :no-op
-                                :transitions [{:when [:true]
-                                               :switch :gathering-wealth}]}}})
+(defn queued-for-removal
+  [{:keys [self required]}]
+  (let [to-remove (get required [:entities :removal-queue])]
+    (some #(when (= % (:id self)) true) to-remove)))
 
-(def item-entity {:position {:x 40 :y 15}
-                     :id :generate/item
-                     :type :cultist
-                     :wealth 0})
+(defn item-picked
+  [{:keys [self]}]
+  (:picked? self))
+
+(def item-evaluations {::queued-for-removal queued-for-removal
+                       ::item-picked item-picked})
+
+(def item-fsm {:require [[:path [:entities :removal-queue]]]
+               :current {:state :on-floor
+                         :effect :no-op}
+               :last {:state nil}
+               :states {:on-floor {:effect :no-op
+                                   :transitions [{:when [::item-picked]
+                                                  :switch :picked}]}
+                        :picked {:effect ::queue-for-removal
+                                 :transitions [{:when [::queued-for-removal]
+                                                :switch :removed}]}
+                        :removed {:effect :no-op
+                                  :transitions []}}})
+
+(def item-entity {:position {:x 0 :y 0}
+                  :id :generate/item
+                  :price 0
+                  :discount-percent 0
+                  :usable? false
+                  :texture :item
+                  :type :item})
+
+(comment
+;; TODO: maybe you could do something like this to generate stuff automatically
+  {:position {:randomize/x [0 80] :randomize/y [0 80]}
+          :id :generate/item
+          :price 0
+          :discount-percent 0
+   :usable? false
+   :picked? false
+          :one-of/texture [:item :weapon]
+          :type :item})

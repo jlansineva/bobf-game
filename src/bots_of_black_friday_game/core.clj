@@ -79,7 +79,8 @@
             new-state (-> state
                           (behavior/update-system-entities)
                           (behavior/update-behavioral-entities)
-                          (behavior/update-controlled-entities))
+                          (behavior/update-controlled-entities)
+                          #_(behavior/remove-dead-entities))
             new-state (if bot-mode
                         new-state
                         (vis/update-visualizer new-state old-state))]

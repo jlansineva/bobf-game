@@ -65,7 +65,7 @@
         (assoc-in [:entities :data id] entity)
         (update-in [:entities :behavioral-entities] (comp vec conj) id)
         (assoc-in [:entities :entity->types id] (:type entity))
-        (assoc-in [:entities :type->entities (:type entity)] id))))
+        (update-in [:entities :type->entities (:type entity)] (comp vec conj) id))))
 
 (defn add-system-entity
   [state entity logic effects evaluations]
@@ -82,3 +82,20 @@
 
 (defn add-static-entity
   [state entity])
+
+(defn remove-by-id
+  [entity-id-vector entity-id]
+  (into []
+        (remove #(= entity-id %))
+        entity-id-vector))
+
+(defn remove-behavioral-entity
+  [state entity]
+  (let [{:keys [id type]} entity]
+    (prn :rbe> id)
+    (-> state
+        (update :behaviors dissoc id)
+        (update-in [:entities :data] dissoc id)
+        (update-in [:entities :entity->types] dissoc id)
+        (update-in [:entities :type->entities] dissoc type)
+        (update-in [:entities :behavioral-entities] remove-by-id id))))

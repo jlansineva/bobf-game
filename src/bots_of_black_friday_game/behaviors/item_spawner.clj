@@ -1,4 +1,6 @@
-(ns bots-of-black-friday-game.behaviors.item-spawner)
+(ns bots-of-black-friday-game.behaviors.item-spawner
+  (:require [bots-of-black-friday-game.behaviors.item :as item]
+            [bots-of-black-friday-game.behavior :as behavior]))
 
 (defn countdown-for-spawn
   [self required state]
@@ -11,7 +13,13 @@
 (defn spawn-random-item
   [self required state]
   (prn :> :spawning-a-random-item)
-  (assoc-in state [:entities :data self :countdown] 10))
+  (let [countdown-reset (assoc-in state [:entities :data self :countdown] 10)]
+    (behavior/add-behavioral-entity
+     countdown-reset
+     (update item/item-entity :position assoc :x (rand-int 60) :y (rand-int 60))
+     item/item-fsm
+     item/item-effects
+     item/item-evaluations)))
 
 (def item-spawner-effects {::countdown-for-spawn countdown-for-spawn
                            ::spawn-random-item spawn-random-item})
