@@ -138,10 +138,8 @@
         behavioral-entities (create-entities game-state (get-in game-state [:entities :behavioral-entities]))
         filtered-map (into []
                            (comp
-                            (filter #(and (between 1 (:x %) 90)
-                                          (between 1 (:y %) 27)
-                                          (some? (#{:wall :exit}
-                                                  (:tile %)))))
+                            (filter #(some? (#{:wall :exit}
+                                             (:tile %))))
                             (map #(assoc (select-keys % [:x :y])
                                          :type (:tile %)
                                          :texture {:height 1 :width 1}
@@ -151,11 +149,7 @@
     (pr/dispatch (vec
                   (concat
                    [:entities/add-entities
-                    {:x 2 :y 2 :type :floor :texture {:width 90 :height 24} :rotation 0 :scale {:x 1 :y 1}}
-                    {:x 0 :y 0 :type :wall :texture {:width 2 :height 28} :rotation 0 :scale {:x 1 :y 1}}
-                    {:x 90 :y 0 :type :wall :texture {:width 2 :height 28} :rotation 0 :scale {:x 1 :y 1}}
-                    {:x 0 :y 26 :type :wall :texture {:width 92 :height 2} :rotation 0 :scale {:x 1 :y 1}}
-                    {:x 0 :y 0 :type :wall :texture {:width 92 :height 2} :rotation 0 :scale {:x 1 :y 1}}]
+                    {:x 2 :y 2 :type :floor :texture {:width 90 :height 24} :rotation 0 :scale {:x 1 :y 1}}]
                    filtered-map
                    behavioral-entities
                    [{:id :player :x 0 :y 0 :type :player :texture {:width 1 :height 1} :rotation 0 :scale {:x 1 :y 1}}]))))

@@ -44,7 +44,7 @@
 ;; TODO: maybe you could do something like this to generate stuff automatically
   {:position {:randomize/x [0 80] :randomize/y [0 80]}
           :id :generate/item
-          :price 0
+          :randomize/price 0
           :discount-percent 0
    :usable? false
    :picked? false

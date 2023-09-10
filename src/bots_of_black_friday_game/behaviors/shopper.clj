@@ -1,178 +1,177 @@
 (ns bots-of-black-friday-game.behaviors.shopper
-  (:require [clojure-bot.log :as log]
-            [clojure-bot.map :as maps]
-            [pelinrakentaja-engine.dev.tila :as tila]))
-
-(def move-matrix {[0 1] "DOWN"
-                  [0 -1] "UP"
-                  [1 0] "RIGHT"
-                  [-1 0] "LEFT"})
+  (:require [bots-of-black-friday-game.map :as maps]
+            [bots-of-black-friday-game.behavior :as behavior]
+            [clojure.math :as math]
+            [clojure.pprint :as pp]))
 
 (defn get-move-based-on-route
   [route position]
   (let [{px :x py :y} position
         {rx :x ry :y} (first route)]
-    (get move-matrix [(- rx px) (- ry py)])))
+    {:dx (* (- rx (math/round px)) 5)
+     :dy (* (- ry (math/round py)) 5)}))
 
 (defn get-next-move
-  [{:keys [player level]
-    :as game-state} target]
-  (let [position-local (get-in player [:local :position])
-        position-server (get-in player [:server :position])
+  [self {:keys [map-data]
+         :as game-state} target]
+  (prn target)
+  (let [position (:position self)
+        target-position (:position target)
         route-to-target (maps/find-route
-                          (get-in level [(:y position-local) (:x position-local)])
-                          (:position target)
-                          level)
-        next-move (get-move-based-on-route route-to-target position-local)
+                         (get-in map-data [:map-data (math/round (:y position)) (math/round (:x position))])
+                         target-position
+                         (:map-data map-data))
+        next-move (get-move-based-on-route route-to-target position)
         ;; if position at server is different from local, we have moved and can send a next move
-        queue? true #_(or
-                 (not= (:x position-local) (:x position-server))
-                 (not= (:y position-local) (:y position-server)))]
-    (cond-> game-state
-      true (assoc-in [:player :local :current-target] target)
-      queue? (assoc-in [:player :local :position] position-server)
-      queue? (assoc-in [:action-queue] next-move))))
+        ]
+    next-move))
 
 (defn move-to-exit
-  [{:keys [level] :as game-state}]
-  (let [best-target (get-in level [:exit])]
-    (get-next-move game-state {:position best-target})))
-
-(defn discounted-price
-  [price discount-percent]
-  (- price (* price (/ discount-percent 100))))
-
-(defn affordable-items
-  [items money]
-  (remove #(let [{:keys [price discountPercent]} %]
-             (> (discounted-price price discountPercent)
-               money))
-    items))
+  [self {:keys [clock]} {:keys [map-data] :as state}]
+  (let [self (get-in state [:entities :data self])
+        exit-target (get-in map-data [:exit])
+        next-move (get-next-move self state {:position exit-target})]
+    (-> state
+        (assoc-in [:entities :data (:id self) :current-target] {:position exit-target})
+        (update-in [:entities :data (:id self) :position :x] + (* (:dx next-move) (:delta-time clock)))
+        (update-in [:entities :data (:id self) :position :y] + (* (:dy next-move) (:delta-time clock))))))
 
 (defn suitable-target
-  [items {:keys [money current-item] :as _player}]
-  (let [affordable-items (affordable-items items money)]
-    (first
-      (sort-by :discountPercent > (keep identity (conj affordable-items current-item))))))
+  [items]
+  (nth items (rand-int (count items))))
 
-(defn move-to-closest-potion
-  [{:keys [player]
-    :as game-state}]
-  (let [{:keys [potions]} (maps/process-targets (get-in game-state [:items]))
-        position-local (get-in player [:local :position])
-        potions-by-distance (map #(assoc % :estimated-distance (maps/heuristic position-local (:position %))) potions)
-        best-target (first (sort-by :estimated-distance potions-by-distance))]
-    (get-next-move game-state best-target)))
-
-(defn move-to-closest-affordable-item
-  [game-state]
-  (let [player (get-in game-state [:player :local])
-        {:keys [purchase-candidates]} (maps/process-targets (get-in game-state [:items]))
-        best-target (suitable-target purchase-candidates player)]
-    (get-next-move game-state best-target)))
+(defn move-to-an-item
+  [self {:keys [item clock]} state]
+  #_(prn :move-to-closest> self item)
+  (let [{:keys [current-target] :as self} (get-in state [:entities :data self])
+        items (into [] (vals item))
+        best-target (if (nil? (:id current-target))
+                      (suitable-target items)
+                      current-target)
+        next-move (get-next-move self state best-target)]
+    (-> state
+        (assoc-in [:entities :data (:id self) :current-target] best-target)
+        (update-in [:entities :data (:id self) :position :x] + (* (:dx next-move) (:delta-time clock)))
+        (update-in [:entities :data (:id self) :position :y] + (* (:dy next-move) (:delta-time clock))))))
 
 (defn pick-item
-  [game-state]
-  (assoc-in game-state [:action-queue] "PICK"))
+  [self required state]
+  (let [{:keys [current-target]} (get-in state [:entities :data self])]
+    (-> state
+        (update-in [:entities :data self :items] conj current-target)
+        (assoc-in [:entities :data self :current-target] {})
+        (update-in [:entities :removal-queue] (comp vec conj) current-target))))
 
-(def effects {::no-op identity
-              ::move-to-closest-affordable-item move-to-closest-affordable-item
-              ::move-to-closest-potion move-to-closest-potion
-              ::move-to-exit move-to-exit
-              ::pick-item pick-item
-              ::initialize (fn [game-state]
-                             (assoc-in game-state [:player :local :initialized?] true))
-              ::dead (fn [game-state]
-                       (assoc-in game-state [:player :local :alive?] false))})
+(defn pay-items-and-exit
+  [self required state]
+  (let [self (get-in state [:entities :data self])
+        total-price (reduce (fn [total {:keys [price]}]
+                              (+ total price)) 0 (:items self))]
+    (prn :piae> (:items self))
+    (prn :piae> total-price)
+    (update-in state [:level :collected-amount] + total-price)))
 
-(def evaluations {::low-health (fn [game-state]
-                                 (let [health (get-in game-state [:player :server :health])]
-                                   (when health
-                                     (< health 70))))
-                  ::no-potions (fn [game-state]
-                                 (let [{:keys [potions]} (maps/process-targets
-                                                           (get-in game-state [:items]))]
-                                   (empty? potions)))
-                  ::on-item (fn [game-state]
-                              (let [{target-position :position} (get-in game-state [:player :local :current-target])
-                                    server-position (get-in game-state [:player :server :position])]
-                                (maps/same-node? target-position server-position)))
-                  ::enough-money (fn [game-state]
-                                   (let [{:keys [price discountPercent]} (get-in game-state [:player :local :current-target])
-                                         money (get-in game-state [:player :server :money])]
-                                     (when (and price discountPercent)
-                                       (> money (discounted-price price discountPercent)))))
-                  ::affordable-items (fn [game-state]
-                                       (let [{:keys [purchase-candidates]} (maps/process-targets
-                                                                             (get-in game-state [:items]))]
-                                         (and
-                                           (seq purchase-candidates)
-                                           (seq (affordable-items purchase-candidates (get-in game-state [:player :server :money]))))))
-                  ::no-affordable-items (fn [game-state]
-                                          (let [{:keys [purchase-candidates]} (maps/process-targets
-                                                                                (get-in game-state [:items]))]
-                                            (and
-                                              (seq purchase-candidates)
-                                              (nil? (seq (affordable-items purchase-candidates (get-in game-state [:player :server :money])))))))
-                  ::on-health (fn [game-state]
-                                (let [current-target (get-in game-state [:player :local :current-target :position])
-                                      server-position (get-in game-state [:player :server :position])]
-                                  (maps/same-node? current-target server-position)))
-                  ::item-picked (fn [game-state]
-                                  (let [items (get-in game-state [:items])
-                                        current-target (get-in game-state [:player :local :current-target :position])]
-                                    (nil? (some #(when (maps/same-node? current-target (:position %)) %) items))))
-                  ::dead (fn [game-state]
-                           (let [server-instance (get-in game-state [:player :server])
-                                 alive? (get-in game-state [:player :local :alive?])]
-                             (and
-                               alive?
-                               (nil? server-instance))))
-                  ::initialized (fn [game-state]
-                                  (true? (get-in game-state [:player :local :initialized?])))
-                  ::instance-found (fn [game-state]
-                                     (some? (get-in game-state [:player :server])))
-                  ::potions-available (fn [game-state]
-                                        (let [{:keys [potions]} (maps/process-targets
-                                                                  (get-in game-state [:items]))]
-                                          (seq potions)))})
+(defn dead
+  [self required state]
+  (update-in state [:entities :removal-queue] (comp vec conj) (get-in state [:entities :data self])))
 
-(def bot-logic-state
-  {:pre {:transitions [{:when [::dead ::initialized]
+(def shopper-effects
+  {::move-to-an-item move-to-an-item
+   ::move-to-exit move-to-exit
+   ::pick-item pick-item
+   ::pay-items-and-exit pay-items-and-exit
+   ::dead dead})
+
+(defn on-item
+  [{:keys [self required] :as game-state}]
+  (let [target-position (:current-target self)
+        entity-position (:position self)]
+    (maps/same-node? (:position target-position) entity-position)))
+
+(defn not-enough-items
+  [{:keys [self required] :as gs}]
+  (let [{:keys [item]} required]
+    (prn :not-enough> (and
+                    (seq (keys item))
+                    (> (count (:items self)) 3))
+         (seq (keys item))
+         (<= (count (:items self)) 3)
+         (keys item)
+         gs)
+    (and
+     (seq (keys item))
+     (<= (count (:items self)) 3))))
+
+(defn enough-items
+  [{:keys [self required]}]
+  (let [{:keys [item]} required]
+    (prn :enough> (and
+                    (seq (keys item))
+                    (> (count (:items self)) 3))
+         (seq (keys item))
+         (> (count (:items self)) 3))
+    (and
+     (seq (keys item))
+     (> (count (:items self)) 3))))
+
+(defn item-picked
+  [{:keys [self]}]
+  (let [{:keys [current-target]} self]
+    (prn :itepicked> (empty? (keys current-target)))
+    (empty? (keys current-target))))
+
+(defn dead?
+  [{:keys [self]}]
+  (let [{:keys [alive?]} self]
+    (not alive?)))
+
+(defn at-exit
+  [{:keys [self]}]
+  (let [{:keys [current-target]} self]
+    (maps/same-node? (:position current-target) (:position self))))
+
+(def shopper-evaluations
+  {::on-item on-item
+   ::not-enough-items not-enough-items
+   ::enough-items enough-items
+   ::item-picked item-picked
+   ::dead dead?
+   ::at-exit at-exit})
+
+(def shopper-fsm
+  {:pre {:transitions [{:when [::dead]
                         :switch :dead}]}
-   :current {:state :waiting-for-init
-             :effect ::no-op}
+   :require [[:type :item] :clock]
+   :current {:state :idle
+             :effect :no-op}
    :last {:state nil}
    :states {:dead {:effect ::dead
                    :transitions []}
-            :waiting-for-init {:effect ::no-op
-                               :transitions [{:when [::instance-found]
-                                              :switch :idle
-                                              :post-effect ::initialize}]}
-            :idle {:effect ::no-op
-                   :transitions [{:when [::low-health ::no-potions]
+            :idle {:effect :no-op
+                   :transitions [{:when [::enough-items]
                                   :switch :move-to-exit}
-                                 {:when [::low-health ::potions-available]
-                                  :switch :move-to-health}
-                                 {:when [::affordable-items]
+                                 {:when [::not-enough-items]
                                   :switch :move-to-item}]}
-            :move-to-item {:effect ::move-to-closest-affordable-item
-                           :transitions [{:when [::low-health ::potions-available]
-                                          :switch :move-to-health}
-                                         {:when [::low-health ::no-potions]
-                                          :switch :move-to-exit}
-                                         {:when [::on-item ::enough-money]
+            :move-to-item {:effect ::move-to-an-item
+                           :transitions [{:when [::on-item]
                                           :switch :pick-item}]}
             :move-to-exit {:effect ::move-to-exit
-                           :transitions [{:when [::affordable-items]
-                                          :switch :move-to-item}]}
-            :move-to-health {:effect ::move-to-closest-potion
-                             :transitions [{:when [::on-health]
-                                            :switch :pick-item}]}
+                           :transitions [{:when [::at-exit]
+                                          :switch :pay-items-and-exit}]}
+            :pay-items-and-exit {:effect ::pay-items-and-exit
+                                 :transitions [{:when [:true]
+                                                :switch :dead}]}
             :pick-item {:effect ::pick-item
-                        :transitions [{:when [::item-picked ::no-affordable-items]
+                        :transitions [{:when [::item-picked ::enough-items]
                                        :switch :move-to-exit}
-                                      {:when [::item-picked ::affordable-items]
-                                       :switch :idle}
-                                      {:when [::item-picked ::potions-available]
+                                      {:when [::item-picked]
                                        :switch :idle}]}}})
+
+(def shopper-entity
+  {:current-target {:x 0 :y 0 :id nil}
+   :position {:x 15 :y 15}
+   :id :generate/shopper
+   :texture :enemy
+   :type :shopper
+   :items []
+   :alive? true})

@@ -9,8 +9,10 @@
             [pelinrakentaja-engine.core :as pr]            )
   (:gen-class))
 
-(def initial-state {:behaviors {}
+(def initial-state {:behaviors {} ;; TODO: create a level entity
+                    :level {:collected-amount 0}
                     :entities {:data {}
+                               :removal-queue []
                                :behavioral-entities []
                                :controlled-entities []
                                :system-entities []
@@ -25,7 +27,11 @@
                       initial-state
                       system-entities)]
     (-> state
-        (behavior/add-behavioral-entity dummy/dummy-entity dummy/dummy-fsm dummy/dummy-effects dummy/dummy-evaluations))))
+        (behavior/add-behavioral-entity dummy/dummy-entity
+                                        dummy/dummy-fsm
+                                        dummy/dummy-effects
+                                        dummy/dummy-evaluations)
+        (assoc :map-data map-data))))
 
 (defn process-map
   "Reads the characters from the string-based map and translates them to weight values"
@@ -60,7 +66,7 @@
   [level]
   (let [{:keys [map-data] :as loaded-level} (edn/read-string (slurp (io/resource level)))
         processed-map (process-map map-data)
-        level-properties (select-keys loaded-level [:title :items :item-limit :system-entities])]
+        level-properties (select-keys loaded-level [:title :items :item-limit :exit :system-entities])]
     (merge level-properties
            {:map-data processed-map})))
 
@@ -80,7 +86,7 @@
                           (behavior/update-system-entities)
                           (behavior/update-behavioral-entities)
                           (behavior/update-controlled-entities)
-                          #_(behavior/remove-dead-entities))
+                          (behavior/remove-dead-entities))
             new-state (if bot-mode
                         new-state
                         (vis/update-visualizer new-state old-state))]

@@ -12,11 +12,13 @@
 
 (defn spawn-random-item
   [self required state]
-  (prn :> :spawning-a-random-item)
-  (let [countdown-reset (assoc-in state [:entities :data self :countdown] 10)]
+  (prn :> :spawning-a-random-item required)
+  (let [countdown-reset (assoc-in state [:entities :data self :countdown] 5)]
     (behavior/add-behavioral-entity
      countdown-reset
-     (update item/item-entity :position assoc :x (rand-int 60) :y (rand-int 60))
+     (-> item/item-entity
+         (update :position assoc :x (+ 5 (rand-int 20)) :y (+ 5 (rand-int 20)))
+         (assoc :price (+ 1000 (* (rand-int 25) 100))))
      item/item-fsm
      item/item-effects
      item/item-evaluations)))

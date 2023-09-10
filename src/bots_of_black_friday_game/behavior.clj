@@ -1,5 +1,6 @@
 (ns bots-of-black-friday-game.behavior
-  (:require [pelinrakentaja-engine.dev.tila :as tila]))
+  (:require [pelinrakentaja-engine.dev.tila :as tila]
+            [bots-of-black-friday-game.behavior :as behavior]))
 
 (comment
   {:behaviors {}
@@ -56,7 +57,9 @@
   {:pre [(some? (:id entity))
          (some? (:type entity))]}
   (let [id (generate-id (:id entity))
-        entity (assoc entity :id id)
+        entity (assoc entity
+                      :id id
+                      :behavioral? true)
         logic-linked-to-id (assoc logic :id id)
         logic-fsm (tila/register-behavior entity logic-linked-to-id effects evaluations)]
     (prn :abe> id)
@@ -71,7 +74,9 @@
   [state entity logic effects evaluations]
   {:pre [(some? (:id entity))]}
   (let [id (generate-id (:id entity))
-        entity (assoc entity :id id)
+        entity (assoc entity
+                      :id id
+                      :system? true)
         logic-linked-to-id (assoc logic :id id)
         logic-fsm (tila/register-behavior entity logic-linked-to-id effects evaluations)]
     (prn :ase> id)
@@ -97,5 +102,19 @@
         (update :behaviors dissoc id)
         (update-in [:entities :data] dissoc id)
         (update-in [:entities :entity->types] dissoc id)
-        (update-in [:entities :type->entities] dissoc type)
+        (update-in [:entities :type->entities type] remove-by-id id)
         (update-in [:entities :behavioral-entities] remove-by-id id))))
+
+(defn remove-dead-entities
+  [state]
+  (assoc-in
+    (reduce (fn [state entity]
+                   (cond
+                     (:behavioral? entity)
+                     (remove-behavioral-entity state entity)
+                     :else
+                     state))
+                 state
+                 (get-in state [:entities :removal-queue]))
+    [:entities :removal-queue]
+    []))
