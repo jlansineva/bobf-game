@@ -6,7 +6,7 @@
             [bots-of-black-friday-game.visualizer :as vis]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [pelinrakentaja-engine.core :as pr]            )
+            [pelinrakentaja-engine.core :as pr])
   (:gen-class))
 
 (def initial-state {:behaviors {} ;; TODO: create a level entity
