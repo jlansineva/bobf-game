@@ -14,7 +14,6 @@
 (defn get-next-move
   [self {:keys [map-data]
          :as game-state} target]
-  (prn target)
   (let [position (:position self)
         target-position (:position target)
         route-to-target (maps/find-route
@@ -69,18 +68,23 @@
                               (+ total price)) 0 (:items self))]
     (prn :piae> (:items self))
     (prn :piae> total-price)
-    (update-in state [:level :collected-amount] + total-price)))
+    (update-in state [:entities :data :level :money-collected] + total-price)))
 
 (defn dead
   [self required state]
   (update-in state [:entities :removal-queue] (comp vec conj) (get-in state [:entities :data self])))
+
+(defn clean-current-target
+  [self required state]
+  (assoc-in state [:entities :data self :current-target] {}))
 
 (def shopper-effects
   {::move-to-an-item move-to-an-item
    ::move-to-exit move-to-exit
    ::pick-item pick-item
    ::pay-items-and-exit pay-items-and-exit
-   ::dead dead})
+   ::dead dead
+   ::clean-current-target clean-current-target})
 
 (defn on-item
   [{:keys [self required] :as game-state}]
@@ -91,13 +95,6 @@
 (defn not-enough-items
   [{:keys [self required] :as gs}]
   (let [{:keys [item]} required]
-    (prn :not-enough> (and
-                    (seq (keys item))
-                    (> (count (:items self)) 3))
-         (seq (keys item))
-         (<= (count (:items self)) 3)
-         (keys item)
-         gs)
     (and
      (seq (keys item))
      (<= (count (:items self)) 3))))
@@ -105,11 +102,6 @@
 (defn enough-items
   [{:keys [self required]}]
   (let [{:keys [item]} required]
-    (prn :enough> (and
-                    (seq (keys item))
-                    (> (count (:items self)) 3))
-         (seq (keys item))
-         (> (count (:items self)) 3))
     (and
      (seq (keys item))
      (> (count (:items self)) 3))))
@@ -117,7 +109,6 @@
 (defn item-picked
   [{:keys [self]}]
   (let [{:keys [current-target]} self]
-    (prn :itepicked> (empty? (keys current-target)))
     (empty? (keys current-target))))
 
 (defn dead?
@@ -130,13 +121,19 @@
   (let [{:keys [current-target]} self]
     (maps/same-node? (:position current-target) (:position self))))
 
+(defn item-gone [{:keys [self required]}]
+  (let [{:keys [current-target]} self
+        {:keys [item]} required]
+    (nil? (some #(when (= (:id current-target) (:id %)) %) (vals item)))))
+
 (def shopper-evaluations
   {::on-item on-item
    ::not-enough-items not-enough-items
    ::enough-items enough-items
    ::item-picked item-picked
    ::dead dead?
-   ::at-exit at-exit})
+   ::at-exit at-exit
+   ::item-gone item-gone})
 
 (def shopper-fsm
   {:pre {:transitions [{:when [::dead]
@@ -153,11 +150,16 @@
                                  {:when [::not-enough-items]
                                   :switch :move-to-item}]}
             :move-to-item {:effect ::move-to-an-item
-                           :transitions [{:when [::on-item]
+                           :transitions [{:when [::item-gone]
+                                          :switch :switch-target}
+                                         {:when [::on-item]
                                           :switch :pick-item}]}
             :move-to-exit {:effect ::move-to-exit
                            :transitions [{:when [::at-exit]
                                           :switch :pay-items-and-exit}]}
+            :switch-target {:effect ::clean-current-target
+                            :transitions [{:when [:true]
+                                           :switch :idle}]}
             :pay-items-and-exit {:effect ::pay-items-and-exit
                                  :transitions [{:when [:true]
                                                 :switch :dead}]}

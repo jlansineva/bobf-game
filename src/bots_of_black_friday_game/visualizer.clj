@@ -131,7 +131,8 @@
   (pr/dispatch [:resources/load-texture {:type :item :texture "present.png"}])
   (pr/dispatch [:resources/load-texture {:type :testing :texture "present.png"}])
   (pr/dispatch [:resources/load-texture {:type :potion :texture "tuoppi.png"}])
-  (pr/dispatch [:resources/load-resource {:type :level-music :music "drums.mp3"}])
+  (pr/dispatch [:resources/load-texture {:type :altar :texture "tuoppi.png"}])
+  #_(pr/dispatch [:resources/load-resource {:type :level-music :music "drums.mp3"}])
 
   (let [flat-map (mapcat (comp vector second)
                          (mapcat second (:map-data current-map)))

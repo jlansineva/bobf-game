@@ -50,7 +50,10 @@
       id)))
 
 (defn add-controlled-entity
-  [])
+  [state entity logic effects evaluations]
+  {:pre [(some? (:id entity))
+         (some? (:type entity))]}
+  state)
 
 (defn add-behavioral-entity
   [state entity logic effects evaluations]
@@ -86,7 +89,15 @@
         (update-in [:entities :system-entities] (comp vec conj) id))))
 
 (defn add-static-entity
-  [state entity])
+  "Add an entity that does not need updating, for purposes like sharing some piece of data
+  with multiple other entities. Static entities can be affected and required."
+  [state entity]
+  {:pre [(some? (:id entity))]}
+  (let [id (generate-id (:id entity))
+        entity (assoc entity
+                      :id id
+                      :static? true)]
+    (assoc-in state [:entities :data id] entity)))
 
 (defn remove-by-id
   [entity-id-vector entity-id]

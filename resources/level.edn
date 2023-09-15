@@ -1,8 +1,11 @@
 {:title "Test Level"
  :items []
  :item-limit 20
- :system-entities [:clock :item-spawner :shopper-spawner]
+ :system-entities [:clock :item-spawner :shopper-spawner :guard-spawner]
+ :static-entities [:level :input]
+ :controlled-entities [:player]
  :enemies [:guard :shopper :cultist]
+ :singleton-entities [:altar]
  :exit {:x 10 :y 10}
  :entities []
  :map-data

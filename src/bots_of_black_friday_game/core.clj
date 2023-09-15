@@ -20,12 +20,29 @@
                                :type->entities {}}})
 
 (defn generate-game-state
-  [{:keys [system-entities] :as map-data} initial-state]
+  [{:keys [system-entities static-entities singleton-entities controlled-entities] :as map-data} initial-state]
   (let [state (reduce (fn [state system-entity-id]
                         (let [{:keys [fsm entity effects evaluations]} (get index/id->entity system-entity-id)]
                           (behavior/add-system-entity state entity fsm effects evaluations)))
                       initial-state
-                      system-entities)]
+                      system-entities)
+        state (reduce (fn [state static-entity-id]
+                        (prn static-entity-id)
+                        (let [{:keys [entity]} (get index/id->entity static-entity-id)]
+                          (behavior/add-static-entity state entity)))
+                      state
+                      static-entities)
+        state (reduce (fn [state entity-id]
+                        (let [{:keys [fsm entity effects evaluations]} (get index/id->entity entity-id)]
+                          (prn entity-id)
+                          (behavior/add-behavioral-entity state entity fsm effects evaluations)))
+                      state
+                      singleton-entities)
+        state (reduce (fn [state entity-id]
+                        (let [{:keys [fsm entity effects evaluations]} (get index/id->entity entity-id)]
+                          (behavior/add-controlled-entity state entity fsm effects evaluations)))
+                      state
+                      controlled-entities)]
     (-> state
         (behavior/add-behavioral-entity dummy/dummy-entity
                                         dummy/dummy-fsm
@@ -66,9 +83,15 @@
   [level]
   (let [{:keys [map-data] :as loaded-level} (edn/read-string (slurp (io/resource level)))
         processed-map (process-map map-data)
-        level-properties (select-keys loaded-level [:title :items :item-limit :exit :system-entities])]
+        level-properties (select-keys loaded-level [:title :items :item-limit :exit :system-entities :singleton-entities :static-entities])]
     (merge level-properties
            {:map-data processed-map})))
+
+(defn process-inputs
+  [state inputs]
+  (let [pressed (into {} (map (fn [[keyval data]] [(get pr/keyval keyval) data]) (inputs)))]
+    ;; TODO replace with affections
+    (assoc-in state [:entities :data :input] pressed)))
 
 (defn algo
   [{:keys [bot-name bot-mode] :as _options}]
@@ -76,13 +99,15 @@
         current-map (load-level "level.edn")
         game-state (generate-game-state
                     current-map
-                    initial-state)]
+                    initial-state)
+        inputs (pr/listen :input/pressed-keys)]
     (when-not bot-mode
       (vis/load-resources current-map game-state))
     (loop [state game-state
            old-state {}]
       (let [alive? true
             new-state (-> state
+                          (process-inputs inputs)
                           (behavior/update-system-entities)
                           (behavior/update-behavioral-entities)
                           (behavior/update-controlled-entities)

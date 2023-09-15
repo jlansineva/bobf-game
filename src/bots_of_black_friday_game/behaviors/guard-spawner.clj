@@ -1,5 +1,5 @@
-(ns bots-of-black-friday-game.behaviors.shopper-spawner
-  (:require [bots-of-black-friday-game.behaviors.shopper :as shopper]
+(ns bots-of-black-friday-game.behaviors.guard-spawner
+  (:require [bots-of-black-friday-game.behaviors.guard :as guard]
             [bots-of-black-friday-game.behavior :as behavior]))
 
 (defn countdown-for-spawn
@@ -10,21 +10,21 @@
                [:entities :data self :countdown]
                - countdown-decrease)))
 
-(defn spawn-a-shopper
+(defn spawn-a-guard
   [self required state]
-  (prn :> :spawning-a-shopper required)
+  (prn :> :spawning-a-guard required)
   (let [countdown-max (get-in state [:entities :data self :max-countdown])
         countdown-reset (assoc-in state [:entities :data self :countdown] countdown-max)]
     (behavior/add-behavioral-entity
      countdown-reset
-     (-> shopper/shopper-entity
-         (update :position assoc :x 4 :y 20))
-     shopper/shopper-fsm
-     shopper/shopper-effects
-     shopper/shopper-evaluations)))
+     (-> guard/guard-entity
+         (update :position assoc :x 4 :y (rand-int 20)))
+     guard/guard-fsm
+     guard/guard-effects
+     guard/guard-evaluations)))
 
-(def shopper-spawner-effects {::countdown-for-spawn countdown-for-spawn
-                              ::spawn-a-shopper spawn-a-shopper})
+(def guard-spawner-effects {::countdown-for-spawn countdown-for-spawn
+                              ::spawn-a-guard spawn-a-guard})
 
 (defn clock-paused
   [{:keys [self required]}]
@@ -35,10 +35,10 @@
   [{:keys [self required]}]
   (<= (:countdown self) 0))
 
-(defn under-spawned-shopper-limit
+(defn under-spawned-guard-limit
   [{:keys [self required]}]
-  (let [{:keys [shopper level]} required]
-    (< (count (keys shopper)) (:max-shoppers self))))
+  (let [{:keys [guard level]} required]
+    (< (count (keys guard)) (:max-guards self))))
 
 (defn clock-unpaused
   [{:keys [self required]}]
@@ -51,13 +51,13 @@
                                                 ;; TODO: once we figure out how levels work
     ))
 
-(def shopper-spawner-evaluations {::clock-paused clock-paused
+(def guard-spawner-evaluations {::clock-paused clock-paused
                                   ::spawn-countdown-zero spawn-countdown-zero
-                                  ::under-spawned-shopper-limit under-spawned-shopper-limit
+                                  ::under-spawned-guard-limit under-spawned-guard-limit
                                   ::clock-unpaused clock-unpaused
                                   ::boss-stage boss-stage})
 
-(def shopper-spawner-fsm {:require [:clock :level [:type :shopper]]
+(def guard-spawner-fsm {:require [:clock :level [:type :guard]]
                           :current {:state :idle
                                     :effect :no-op}
                           :last {:state nil}
@@ -69,9 +69,9 @@
                                                                     :switch :paused}
                                                                    {:when [::boss-stage]
                                                                     :switch :stopped}
-                                                                   {:when [::spawn-countdown-zero ::under-spawned-shopper-limit]
+                                                                   {:when [::spawn-countdown-zero ::under-spawned-guard-limit]
                                                                     :switch :spawning}]}
-                                   :spawning {:effect ::spawn-a-shopper
+                                   :spawning {:effect ::spawn-a-guard
                                               :transitions [{:when [:true]
                                                              :switch :spawner-running}]}
                                    :paused {:effect :no-op
@@ -80,10 +80,10 @@
                                    :stopped {:effect :no-op
                                              :transitions []}}})
 
-(def shopper-spawner-entity {:position {:x 40 :y 15}
-                             :id :shopper-spawner
-                             :type :shopper-spawner
+(def guard-spawner-entity {:position {:x 40 :y 15}
+                             :id :guard-spawner
+                             :type :guard-spawner
                              :countdown 0
                              :max-countdown 20
-                             :max-shoppers 4
+                             :max-guards 4
                              :paused? false})
