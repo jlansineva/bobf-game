@@ -83,7 +83,7 @@
   [level]
   (let [{:keys [map-data] :as loaded-level} (edn/read-string (slurp (io/resource level)))
         processed-map (process-map map-data)
-        level-properties (select-keys loaded-level [:title :items :item-limit :exit :system-entities :singleton-entities :static-entities])]
+        level-properties (select-keys loaded-level [:title :items :item-limit :exit :system-entities :singleton-entities :static-entities :controlled-entities])]
     (merge level-properties
            {:map-data processed-map})))
 

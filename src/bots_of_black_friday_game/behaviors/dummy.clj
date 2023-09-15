@@ -11,10 +11,7 @@
                                     (update-in state [:entities :data self :position :x] - (* 2.0 delta-time))))
                     ::move-up (fn [self required state]
                                 (let [delta-time (get-in state [:entities :data :clock :delta-time])]
-                                  (update-in state [:entities :data self :position :y] + (* 2.0 delta-time))))
-                    ::say-my-name (fn [self required state]
-                                    (prn :my-name-is self)
-                                    state)})
+                                  (update-in state [:entities :data self :position :y] + (* 2.0 delta-time))))})
 
 (def dummy-evaluations {::close-to-right (fn [{:keys [self required] :as state}]
                                            (> (-> self :position :x) 80))
@@ -32,7 +29,7 @@
                 :states {:idle {:effect :no-op
                                 :transitions [{:when [:true]
                                                :switch :moving-right}]}
-                         :moving-right {:effect [::move-right ::say-my-name]
+                         :moving-right {:effect ::move-right
                                         :transitions [{:when [::close-to-right]
                                                        :switch :moving-down}]}
                          :moving-down {:effect ::move-down

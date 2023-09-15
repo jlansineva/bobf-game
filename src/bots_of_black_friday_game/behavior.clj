@@ -53,7 +53,19 @@
   [state entity logic effects evaluations]
   {:pre [(some? (:id entity))
          (some? (:type entity))]}
-  state)
+  (prn :ace> (:id entity))
+  (let [id (generate-id (:id entity))
+        entity (assoc entity
+                      :id id
+                      :system? true)
+        logic-linked-to-id (assoc logic :id id)
+        logic-fsm (tila/register-behavior entity logic-linked-to-id effects evaluations)]
+    (-> state
+        (assoc-in [:behaviors id] logic-fsm)
+        (assoc-in [:entities :data id] entity)
+        (update-in [:entities :controlled-entities] (comp vec conj) id)
+        (assoc-in [:entities :entity->types id] (:type entity))
+        (update-in [:entities :type->entities (:type entity)] (comp vec conj) id))))
 
 (defn add-behavioral-entity
   [state entity logic effects evaluations]

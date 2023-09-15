@@ -49,6 +49,14 @@
     (log/log :debug :game/update-items collected)
     (collect-diffs collected to-add to-remove behavioral-entity-ids identity))) ;; TODO simplify
 
+(defn update-controlled-entities
+  [collected state old-state]
+  (let [behavioral-entity-ids (get-in state [:entities :controlled-entities])
+        old-behavioral-entity-ids (get-in old-state [:entities :controlled-entities])
+        {:keys [to-add to-remove]} (diff-ids behavioral-entity-ids old-behavioral-entity-ids identity)]
+    (log/log :debug :game/update-items collected)
+    (collect-diffs collected to-add to-remove behavioral-entity-ids identity)))
+
 (defn player-id
   [player]
   (keyword (str/replace (:name player) #" " "-")))
@@ -107,7 +115,7 @@
   (let [{:keys [to-add to-remove]}
         (-> {}
             (update-behavioral-entities state old-state)
-            #_(update-controlled-entities state old-state))]
+            (update-controlled-entities state old-state))]
     (pr/dispatch [:audio/play-music :level-music])
     (pr/update!)
     (log/log :debug :game/update-items :remove> to-remove :add> to-add)
@@ -115,7 +123,8 @@
       (pr/dispatch (into [:entities/add-entities] (create-entities state to-add))))
     (when (seq to-remove)
       (pr/dispatch (into [:entities/remove-entities-with-ids] to-remove)))
-    (let [updateable-entities (create-entity-update-events (get-in state [:entities :data]) (get-in state [:entities :behavioral-entities]))]
+    (let [updateable-entities (create-entity-update-events (get-in state [:entities :data]) (concat (get-in state [:entities :behavioral-entities])
+                                                                                                    (get-in state [:entities :controlled-entities])))]
       (pr/dispatch (into [:entities/update-entities-id-properties]
                          updateable-entities)))
     state))

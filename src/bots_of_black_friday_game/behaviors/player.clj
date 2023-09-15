@@ -4,16 +4,16 @@
   [self {:keys [input clock]} state]
   (let [self-data (get-in state [:entities :data self])]
     (cond-> state
-      (get-in input [:keys :left :pressed?])
+      (get-in input [:left :pressed?])
       (update-in [:entities :data self :position :x] - (* (:speed self-data) (:delta-time clock)))
 
-      (get-in input [:keys :right :pressed?])
+      (get-in input [:right :pressed?])
       (update-in [:entities :data self :position :x] + (* (:speed self-data) (:delta-time clock)))
 
-      (get-in input [:keys :up :pressed?])
+      (get-in input [:up :pressed?])
       (update-in [:entities :data self :position :y] - (* (:speed self-data) (:delta-time clock)))
 
-      (get-in input [:keys :down :pressed?])
+      (get-in input [:down :pressed?])
       (update-in [:entities :data self :position :y] + (* (:speed self-data) (:delta-time clock))))))
 
 (defn shooting
@@ -28,18 +28,24 @@
 (defn moving?
   [{:keys [required]}]
   (let [{:keys [input]} required]
+      (prn :moving> (or
+      (true? (get-in input [:left :pressed?]))
+      (true? (get-in input [:right :pressed?]))
+      (true? (get-in input [:up :pressed?]))
+      (true? (get-in input [:down :pressed?]))))
     (or
-      (true? (get-in input [:keys :left :pressed?]))
-      (true? (get-in input [:keys :right :pressed?]))
-      (true? (get-in input [:keys :up :pressed?]))
-      (true? (get-in input [:keys :down :pressed?])))))
+      (true? (get-in input [:left :pressed?]))
+      (true? (get-in input [:right :pressed?]))
+      (true? (get-in input [:up :pressed?]))
+      (true? (get-in input [:down :pressed?])))))
 
 (defn stopped?
   [state]
   (not (moving? state)))
 
 (def player-evaluations
-  {::moving moving?})
+  {::moving moving?
+   ::stopped stopped?})
 
 (def player-fsm
   {:require [:input :clock]

@@ -22,14 +22,12 @@
 
 (defn attack-cooling-down
   [self {:keys [clock]} state]
-  (prn :cooling>)
   (update-in state [:entities :data self :cooldown :counter] - (:delta-time clock)))
 
 (defn seek-target
   [self {:keys [testing]} state]
   (let [guard-position (get-in state [:entities :data self :position])
         targets (vals testing)]
-    (prn :seeking> targets)
     (assoc-in state [:entities :data self :chase-target]
               (some #(when (< (utils/get-distance guard-position (:position %)) 40) (:id %))
                     targets))))
@@ -48,7 +46,6 @@
 (defn player-too-far
   [{:keys [self required]}]
   (let [target (get-in required [:testing (:chase-target self)])]
-    (prn :too-far> target )
     (if target
       (>
         (utils/get-distance (:position self)
