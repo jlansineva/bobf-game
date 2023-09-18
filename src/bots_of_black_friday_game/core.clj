@@ -22,25 +22,35 @@
 (defn generate-game-state
   [{:keys [system-entities static-entities singleton-entities controlled-entities] :as map-data} initial-state]
   (let [state (reduce (fn [state system-entity-id]
-                        (let [{:keys [fsm entity effects evaluations]} (get index/id->entity system-entity-id)]
-                          (behavior/add-system-entity state entity fsm effects evaluations)))
+                        (let [{:keys [fsm entity effects evaluations affections]}
+                              (get index/id->entity system-entity-id)]
+                          (if (some? affections)
+                            (behavior/add-system-entity state entity fsm effects evaluations affections)
+                            (behavior/add-system-entity state entity fsm effects evaluations))))
                       initial-state
                       system-entities)
         state (reduce (fn [state static-entity-id]
-                        (prn static-entity-id)
-                        (let [{:keys [entity]} (get index/id->entity static-entity-id)]
+                        (let [{:keys [entity]} (get index/id->entity static-entity-id)
+                              entity (assoc entity
+                                            :height (count (:map-data map-data))
+                                            :width (count (get (:map-data map-data) 0)))]
                           (behavior/add-static-entity state entity)))
                       state
                       static-entities)
         state (reduce (fn [state entity-id]
-                        (let [{:keys [fsm entity effects evaluations]} (get index/id->entity entity-id)]
-                          (prn entity-id)
-                          (behavior/add-behavioral-entity state entity fsm effects evaluations)))
+                        (let [{:keys [fsm entity effects evaluations affections]}
+                              (get index/id->entity entity-id)]
+                          (if (some? affections)
+                            (behavior/add-behavioral-entity state entity fsm effects evaluations affections)
+                            (behavior/add-behavioral-entity state entity fsm effects evaluations))))
                       state
                       singleton-entities)
         state (reduce (fn [state entity-id]
-                        (let [{:keys [fsm entity effects evaluations]} (get index/id->entity entity-id)]
-                          (behavior/add-controlled-entity state entity fsm effects evaluations)))
+                        (let [{:keys [fsm entity effects evaluations affections]}
+                              (get index/id->entity entity-id)]
+                          (if (some? affections)
+                            (behavior/add-controlled-entity state entity fsm effects evaluations affections)
+                            (behavior/add-controlled-entity state entity fsm effects evaluations))))
                       state
                       controlled-entities)]
     (-> state
@@ -118,60 +128,6 @@
         (if-not alive?
           {}
           (recur new-state state))))))
-
-(comment
-  :game-state {:entities
-               {:data {:player {:x 1 :y 2 :fsm {}}
-                       :enemy-1 {:x 4 :y 5}
-                       :enemy-2 {:x 24 :y 35}}
-                :behavioral-entities [:enemy-1 :enemy-2]
-                :controlled-entities [:player]
-                :entity->types {:enemy-1 :guard
-                                :enemy-2 :shopper}
-                :type->entities {:guard [:enemy-1]
-                                 :shopper [:enemy-2]}}
-               :behaviors {}}
-
-  {:require [[:type :guard] [:type :shopper]]
-   :id :player
-   :pre {:transitions [{:when [::dead ::initialized]
-                        :switch :dead}]}
-   :current {:state :waiting-for-init
-             :effect ::no-op}
-   :last {:state nil}
-   :states {:dead {:effect ::dead
-                   :transitions []}
-            :waiting-for-init {:effect ::no-op
-                               :transitions [{:when [::instance-found]
-                                              :switch :idle
-                                              :post-effect ::initialize}]}
-            :idle {:effect ::no-op
-                   :transitions [{:when [::low-health ::no-potions]
-                                  :switch :move-to-exit}
-                                 {:when [::low-health ::potions-available]
-                                  :switch :move-to-health}
-                                 {:when [::affordable-items]
-                                  :switch :move-to-item}]}
-            :move-to-item {:effect ::move-to-closest-affordable-item
-                           :transitions [{:when [::low-health ::potions-available]
-                                          :switch :move-to-health}
-                                         {:when [::low-health ::no-potions]
-                                          :switch :move-to-exit}
-                                         {:when [::on-item ::enough-money]
-                                          :switch :pick-item}]}
-            :move-to-exit {:effect ::move-to-exit
-                           :transitions [{:when [::affordable-items]
-                                          :switch :move-to-item}]}
-            :move-to-health {:effect ::move-to-closest-potion
-                             :transitions [{:when [::on-health]
-                                            :switch :pick-item}]}
-            :pick-item {:effect ::pick-item
-                        :transitions [{:when [::item-picked ::no-affordable-items]
-                                       :switch :move-to-exit}
-                                      {:when [::item-picked ::affordable-items]
-                                       :switch :idle}
-                                      {:when [::item-picked ::potions-available]
-                                       :switch :idle}]}}})
 
 (defn -main
   [& args]

@@ -11,14 +11,17 @@
                - countdown-decrease)))
 
 (defn spawn-a-shopper
-  [self required state]
+  [self {:keys [level] :as required} state]
   (prn :> :spawning-a-shopper required)
   (let [countdown-max (get-in state [:entities :data self :max-countdown])
         countdown-reset (assoc-in state [:entities :data self :countdown] countdown-max)]
     (behavior/add-behavioral-entity
      countdown-reset
      (-> shopper/shopper-entity
-         (update :position assoc :x 4 :y 20))
+         (update :position
+                 assoc
+                 :x (if (< (rand-int 10) 5) 4 (- (:height level) 4))
+                 :y (+ 2 (rand-int (- (:height level) 4)))))
      shopper/shopper-fsm
      shopper/shopper-effects
      shopper/shopper-evaluations)))
@@ -84,6 +87,6 @@
                              :id :shopper-spawner
                              :type :shopper-spawner
                              :countdown 0
-                             :max-countdown 20
-                             :max-shoppers 4
+                             :max-countdown 10
+                             :max-shoppers 15
                              :paused? false})

@@ -3,7 +3,8 @@
 
 (defn queue-for-removal
   [self required state]
-  (update-in state [:entities :removal-queue] (comp vec conj) (:id self)))
+  (let [self-data (get-in state [:entities :data self])]
+    (update-in state [:entities :removal-queue] (comp vec conj) self-data)))
 
 (def item-effects {::queue-for-removal queue-for-removal })
 
@@ -18,6 +19,13 @@
 
 (def item-evaluations {::queued-for-removal queued-for-removal
                        ::item-picked item-picked})
+
+(defn pickup
+  [state entity _]
+  (queue-for-removal (:id entity) {} state))
+
+(def item-affections
+  {:pickup pickup})
 
 (def item-fsm {:require [[:path [:entities :removal-queue]]]
                :current {:state :on-floor

@@ -47,9 +47,9 @@
    ::firewall-attack-not-max-count firewall-attack-not-max-count?
    ::firewall-attack-cooled-down firewall-attack-cooled-down?})
 
-(defn fireball-attack [self required state] (prn :fireball-attack>) state)
-
-(defn dead [self required state] (prn :mammon-dead>) state)
+(defn dead
+  [self required state]
+  (update-in state [:entities :removal-queue] (comp vec conj) (get-in state [:entities :data self])))
 
 (defn roaming-back-and-forth
   [self {:keys [clock]} state]
@@ -62,16 +62,17 @@
   (update-in state [:entities :data self :attacks :fireball :attacks :cooldown] + (* 1 (:delta-time clock))))
 
 (defn do-a-fireball-attack
-  [self {:keys [testing]} state]
+  [self {:keys [player]} state]
   (let [self-data (get-in state [:entities :data self])
-        target (first (vals testing))]
+        target player]
     (-> state
         (assoc-in [:entities :data self :attacks :fireball :cooldown :counter] (get-in state [:entities :data self :attacks :fireball :cooldown :max]))
         (update-in [:entities :data self :attacks :fireball :attacks :counter] inc)
         (assoc-in [:entities :data self :attacks :fireball :attacks :cooldown] 0)
-        (behavior/add-behavioral-entity (fireball/fireball-with-pos-and-speed
+        (behavior/add-behavioral-entity (fireball/with-pos-speed-layer
                                          (:position self-data)
-                                         (:position target))
+                                          (:position target)
+                                          :enemy-projectile)
                                         fireball/fireball-fsm
                                         fireball/fireball-effects
                                         fireball/fireball-evaluations))))
@@ -81,16 +82,17 @@
   (update-in state [:entities :data self :attacks :firewall :attacks :cooldown] + (* 1 (:delta-time clock))))
 
 (defn do-a-firewall-attack
-  [self {:keys [testing]} state]
+  [self {:keys [player]} state]
   (let [self-data (get-in state [:entities :data self])
-        target (first (vals testing))]
+        target player]
     (-> state
         (assoc-in [:entities :data self :attacks :firewall :cooldown :counter] (get-in state [:entities :data self :attacks :firewall :cooldown :max]))
         (update-in [:entities :data self :attacks :firewall :attacks :counter] inc)
         (assoc-in [:entities :data self :attacks :firewall :attacks :cooldown] 0)
-        (behavior/add-behavioral-entity (firewall/firewall-with-pos-and-speed
+        (behavior/add-behavioral-entity (firewall/with-pos-speed-layer
                                          (:position self-data)
-                                         (:position target))
+                                          (:position target)
+                                          :enemy-projectile)
                                         firewall/firewall-fsm
                                         firewall/firewall-effects
                                         firewall/firewall-evaluations))))
@@ -103,15 +105,33 @@
       (assoc-in [:entities :data self :attacks :firewall :attacks :counter] 0)
       (assoc-in [:entities :data self :attacks :firewall :attacks :cooldown] 0)))
 
+(defn invincibility-frames-countdown
+  [self _ state]
+  (let [self-data (get-in state [:entities :data self])]
+    (if (> (:invincibility self-data) 0)
+      (update-in state [:entities :data self :invincibility] dec)
+      state)))
+
 (def mammon-effects
-  {::fireball-attack fireball-attack
-   ::reset-weapon-counters reset-weapon-counters
+  {::reset-weapon-counters reset-weapon-counters
    ::dead dead
    ::roaming-back-and-forth roaming-back-and-forth
    ::fireball-cooldown fireball-cooldown
    ::do-a-fireball-attack do-a-fireball-attack
    ::firewall-cooldown firewall-cooldown
-   ::do-a-firewall-attack do-a-firewall-attack})
+   ::do-a-firewall-attack do-a-firewall-attack
+   ::invincibility-frames-countdown invincibility-frames-countdown})
+
+(defn hurt
+  [state entity [damage]]
+  (if (<= (:invincibility entity) 0)
+    (-> state
+        (update-in [:entities :data (:id entity) :health] - damage)
+        (assoc-in [:entities :data (:id entity) :invincibility] 5))
+    state))
+
+(def mammon-affections
+  {:hurt hurt})
 
 (def mammon-fsm
   {:pre {:transitions [{:when [::dead]
@@ -124,12 +144,12 @@
                                   :switch :roam-back-and-forth}]}
             :dead {:effect ::dead
                    :transitions []}
-            :roam-back-and-forth {:effect ::roaming-back-and-forth
+            :roam-back-and-forth {:effect [::roaming-back-and-forth ::invincibility-frames-countdown]
                                   :transitions [{:when [::fireball-cooldown-done]
                                                  :switch :fireball-attack-mode}
                                                 {:when [::firewall-cooldown-done]
                                                  :switch :firewall-attack-mode}]}
-            :fireball-attack-mode {:effect ::fireball-cooldown
+            :fireball-attack-mode {:effect [::fireball-cooldown ::invincibility-frames-countdown]
                                    :transitions [{:when [::fireball-attack-max-count]
                                                   :switch :roam-back-and-forth
                                                   :post-effect ::reset-weapon-counters}
@@ -138,7 +158,7 @@
             :do-a-fireball-attack {:effect ::do-a-fireball-attack
                                    :transitions [{:when [:true]
                                                   :switch :fireball-attack-mode}]}
-            :firewall-attack-mode {:effect ::firewall-cooldown
+            :firewall-attack-mode {:effect [::firewall-cooldown ::invincibility-frames-countdown]
                                    :transitions [{:when [::firewall-attack-max-count]
                                                   :switch :roam-back-and-forth
                                                   :post-effect ::reset-weapon-counters}
@@ -152,14 +172,15 @@
   {:id :mammon
    :health 100
    :position {:x 30 :y 30}
-   :attacks {:fireball {:cooldown {:counter 20 :max 20}
+   :invincibility 0
+   :attacks {:fireball {:cooldown {:counter 5 :max 3}
                         :attacks {:max 5
                                   :rate 2
                                   :cooldown 0
                                   :counter 0}
                         :attacks-per-second 0.5
                         :attack-entity :fireball}
-             :firewall {:cooldown {:counter 50 :max 50}
+             :firewall {:cooldown {:counter 0 :max 8}
                         :attacks {:max 2
                                   :rate 1
                                   :cooldown 0

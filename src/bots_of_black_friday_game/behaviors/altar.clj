@@ -5,7 +5,13 @@
 (defn spawn-mammon
   [self required state]
   (prn :boss-stage>)
-  (behavior/add-behavioral-entity state mammon/mammon-entity mammon/mammon-fsm mammon/mammon-effects mammon/mammon-evaluations))
+  (behavior/add-behavioral-entity
+    state
+    mammon/mammon-entity
+    mammon/mammon-fsm
+    mammon/mammon-effects
+    mammon/mammon-evaluations
+    mammon/mammon-affections))
 
 (defn convert-money-to-wealth
   [self required state]

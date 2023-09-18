@@ -17,7 +17,8 @@
                  :item {:fsm i/item-fsm
                         :entity i/item-entity
                         :evaluations i/item-evaluations
-                        :effects i/item-effects}
+                        :effects i/item-effects
+                        :affections i/item-affections}
                  :clock {:fsm clock/clock-fsm
                          :entity clock/clock-entity
                          :evaluations clock/clock-evaluations
@@ -39,10 +40,13 @@
                          :evaluations altar/altar-evaluations
                          :effects altar/altar-effects}
 
-
+                 ;; controlled
                  :player {:fsm player/player-fsm
                           :entity player/player-entity
                           :evaluations player/player-evaluations
-                          :effects player/player-effects}
+                          :effects player/player-effects
+                          :affections player/player-affections}
+
+                 ;; static
                  :level {:entity level/level-entity}
                  :input {:entity input/input-entity}})

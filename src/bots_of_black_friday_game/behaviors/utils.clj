@@ -5,10 +5,10 @@
   (let [dx (- (:x pos-b) (:x pos-a))
         dy (- (:y pos-b) (:y pos-a))
         dist (Math/sqrt (+ (* dx dx) (* dy dy)))]
-    (if (<= dist movement-speed)
-      {:x dx :y dy}
-      {:x (* (/ dx dist) movement-speed)
-       :y (* (/ dy dist) movement-speed)})))
+    #_(if (<= dist movement-speed)
+      {:x dx :y dy})
+    {:x (* (/ dx dist) movement-speed)
+     :y (* (/ dy dist) movement-speed)}))
 
 (defn get-distance
   [pos-a pos-b]

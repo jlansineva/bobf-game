@@ -11,17 +11,25 @@
                - countdown-decrease)))
 
 (defn spawn-a-guard
-  [self required state]
-  (prn :> :spawning-a-guard required)
+  [self {:keys [level]} state]
   (let [countdown-max (get-in state [:entities :data self :max-countdown])
-        countdown-reset (assoc-in state [:entities :data self :countdown] countdown-max)]
+        countdown-reset (assoc-in state [:entities :data self :countdown] countdown-max)
+        {:keys [x y]} (case (rand-int 4)
+                        0 {:x 4 :y (+ (rand-int (- (:height level) 8)) 4)}
+                        1 {:x (- (:width level) 4) :y (+ (rand-int (- (:height level) 8)) 4)}
+                        2 {:x (+ (rand-int (- (:width level) 8)) 4) :y 4 }
+                        3 {:x (+ (rand-int (- (:width level) 8)) 4) :y (- (:height level) 4)})]
     (behavior/add-behavioral-entity
      countdown-reset
      (-> guard/guard-entity
-         (update :position assoc :x 4 :y 20))
+         (update :position
+                 assoc
+                 :x x
+                 :y y))
      guard/guard-fsm
      guard/guard-effects
-     guard/guard-evaluations)))
+     guard/guard-evaluations
+     guard/guard-affections)))
 
 (def guard-spawner-effects {::countdown-for-spawn countdown-for-spawn
                               ::spawn-a-guard spawn-a-guard})
@@ -84,6 +92,6 @@
                              :id :guard-spawner
                              :type :guard-spawner
                              :countdown 0
-                             :max-countdown 20
-                             :max-guards 4
+                             :max-countdown 10
+                             :max-guards 10
                              :paused? false})

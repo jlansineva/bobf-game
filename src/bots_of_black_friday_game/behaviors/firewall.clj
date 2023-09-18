@@ -38,7 +38,7 @@
   (let [self-data (get-in state [:entities :data self])]
     (-> state
         (assoc-in [:entities :data self :flame-cooldown] (get-in state [:entities :data self :max]))
-        (behavior/add-behavioral-entity (assoc flame/flame-entity :position (:position self-data))
+        (behavior/add-behavioral-entity (flame/with-pos-layer (:position self-data) :enemy-projectile)
                                         flame/flame-fsm
                                         flame/flame-effects
                                         flame/flame-evaluations))))
@@ -70,14 +70,16 @@
    :speed 6
    :damage 10
    :life 5
-   :type :firewall
+   :type :projectile
+   :layer :none
    :flame-cooldown 10 :max 10
    :texture :potion
    :position {:x 0 :y 0}
    :movement {:x 0 :y 0}})
 
-(defn firewall-with-pos-and-speed
-  [start target]
+(defn with-pos-speed-layer
+  [start target layer]
   (-> firewall-entity
       (assoc :position start
+             :layer layer
              :movement (utils/get-movement-vector start target (:speed firewall-entity)))))

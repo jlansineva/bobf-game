@@ -159,7 +159,7 @@
     (pr/dispatch (vec
                   (concat
                    [:entities/add-entities
-                    {:x 2 :y 2 :type :floor :texture {:width 90 :height 24} :rotation 0 :scale {:x 1 :y 1}}]
+                    {:x 2 :y 2 :type :floor :texture {:width 90 :height (- (count (:map-data current-map)) 4)} :rotation 0 :scale {:x 1 :y 1}}]
                    filtered-map
                    behavioral-entities
                    [{:id :player :x 0 :y 0 :type :player :texture {:width 1 :height 1} :rotation 0 :scale {:x 1 :y 1}}]))))
