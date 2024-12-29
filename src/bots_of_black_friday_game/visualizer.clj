@@ -7,7 +7,7 @@
 
 (defn load-engine
   []
-  (reset! engine (pr/initialize-window {:title "Bots of Black Friday"})))
+  (reset! engine (pr/initialize-window {:title "Bots of Black Friday" :repl? true})))
 
 (defn between [lower compare upper]
   (and (> compare lower) (< compare upper)))
@@ -110,6 +110,11 @@
       [id position [:x :y]])
    entities))
 
+"How this works is that we update entities based on two instances of state and then update the engine
+accordingly. If we had a link between engine state and game state for entities, we wouldn't have to do this
+
+It is probably okay to create a view to an entity that has the necessary properties but the state could be shared"
+
 (defn update-visualizer
   [state old-state]
   (let [{:keys [to-add to-remove]}
@@ -128,6 +133,13 @@
       (pr/dispatch (into [:entities/update-entities-id-properties]
                          updateable-entities)))
     state))
+
+(comment {:type :blah
+          :texture :texturedict
+          :animation {:animations
+                      {:walk {:frame-speed 10
+                              :loop :forward
+                              :frames [1 2 3 4]}}}})
 
 (defn load-resources
   [current-map game-state] ;; TODO: maybe refactor type to something else -> resource id e.g.
@@ -148,20 +160,20 @@
         behavioral-entities (create-entities game-state (get-in game-state [:entities :behavioral-entities]))
         filtered-map (into []
                            (comp
-                            (filter #(some? (#{:wall :exit}
-                                             (:tile %))))
-                            (map #(assoc (select-keys % [:x :y])
-                                         :type (:tile %)
-                                         :texture {:height 1 :width 1}
-                                         :rotation 0
-                                         :scale {:x 1 :y 1})))
+                             (filter #(some? (#{:wall :exit}
+                                               (:tile %))))
+                             (map #(assoc (select-keys % [:x :y])
+                                          :type (:tile %)
+                                          :texture {:height 1 :width 1}
+                                          :rotation 0
+                                          :scale {:x 1 :y 1})))
                            flat-map)]
     (pr/dispatch (vec
-                  (concat
-                   [:entities/add-entities
-                    {:x 2 :y 2 :type :floor :texture {:width 90 :height (- (count (:map-data current-map)) 4)} :rotation 0 :scale {:x 1 :y 1}}]
-                   filtered-map
-                   behavioral-entities
-                   [{:id :player :x 0 :y 0 :type :player :texture {:width 1 :height 1} :rotation 0 :scale {:x 1 :y 1}}]))))
+                   (concat
+                     [:entities/add-entities
+                      {:x 2 :y 2 :type :floor :texture {:width 90 :height (- (count (:map-data current-map)) 4)} :rotation 0 :scale {:x 1 :y 1}}]
+                     filtered-map
+                     behavioral-entities
+                     [{:id :player :x 0 :y 0 :type :player :texture {:width 1 :height 1} :rotation 0 :scale {:x 1 :y 1}}]))))
 
   (pr/dispatch [:engine/ready]))

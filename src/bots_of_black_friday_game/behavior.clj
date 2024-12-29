@@ -1,5 +1,5 @@
 (ns bots-of-black-friday-game.behavior
-  (:require [pelinrakentaja-engine.dev.tila :as tila]
+  (:require [pelinrakentaja-tila.core :as tila]
             [bots-of-black-friday-game.behavior :as behavior]))
 
 (comment
